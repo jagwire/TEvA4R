@@ -12,6 +12,7 @@ import edu.mit.cci.teva.MemoryBasedRunner;
 import edu.mit.cci.teva.TevaFactory;
 import edu.mit.cci.teva.engine.CommunityFinderException;
 import edu.mit.cci.teva.engine.CommunityModel;
+import edu.mit.cci.teva.engine.EvolutionEngine;
 import edu.mit.cci.teva.engine.NetworkProvider;
 import edu.mit.cci.teva.engine.TevaParameters;
 import edu.mit.cci.teva.model.Conversation;
@@ -26,6 +27,8 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.xml.bind.JAXBException;
 import org.apache.commons.io.IOUtils;
 
@@ -40,6 +43,8 @@ public class TEvA {
     private boolean expire_old;
     private MEMBERSHIP_METHOD membership_method;
     private double min_match;
+
+    private Conversation conversation;
 
     public static enum METHOD {
         EXPONENTIAL,
@@ -56,6 +61,7 @@ public class TEvA {
     private int delta;
 
     private NetworkProvider provider;
+    private TevaFactory factory;
 
     public void defaults(String propertiesInCSV) {
         String[] entries = propertiesInCSV.split(",");
@@ -77,12 +83,12 @@ public class TEvA {
         InputStream stream = IOUtils.toInputStream(myData);
 
         //create conversation 
-        Conversation conversation = new CsvBasedConversation("Corpus-Name", stream);
+        conversation = new CsvBasedConversation("Corpus-Name", stream);
 
         TevaParametersAdapter adapter = new TevaParametersAdapter(csvKeyValuePairs);
         TevaParameters parameters = adapter.getParameters();
 
-        TevaFactory factory = new DefaultTevaFactory(parameters, conversation);
+        factory = new DefaultTevaFactory(parameters, conversation);
 
         //start network generation piece
         BinningStrategy<Windowable> binningStrategy = factory.getTopicBinningStrategy(factory.getConversationData(), factory.getTopicWindowingFactory());
@@ -127,13 +133,46 @@ public class TEvA {
         
         return output.toArray(new String[]{});
     }
-    /*
-     public TopicModel evolve(List<EdgeList> networks) {
-        return null;
 
+    private EvolutionEngine EvolutionEngine(CommunityModel model, TevaParameters parameters, NetworkProvider provider, TevaFactory factory) {
+        return new EvolutionEngine(model, parameters, provider, factory.getFinder(), factory.getStepper(model), factory.getMerger());
     }
 
-    public Assignments membership(CSVData myData, TopicModel model) {
+    private CommunityModel CommunityModel(TevaParameters parameters, TevaFactory factory, Conversation conversation) {
+        return new CommunityModel(parameters, factory.getTopicWindowingFactory().getStrategy().getWindowBoundaries(), conversation.getName());
+    }
+
+    public String[] evolve(String networks, String csvKeyValuePairs) {
+        try {
+            if (conversation == null || factory == null) {
+                throw new RuntimeException("TRIED TO RUN EVOLVE WITHOUT RUNNING NETWORKS FIRST!");
+            }
+
+            TevaParametersAdapter adapter = new TevaParametersAdapter(csvKeyValuePairs);
+            TevaParameters parameters = adapter.getParameters();
+
+            //create community model
+            CommunityModel model = CommunityModel(parameters, factory, conversation);
+
+            //create evolution engine
+            EvolutionEngine engine = EvolutionEngine(model, parameters, provider, factory);
+
+            //run the algorithm            
+            engine.process();
+
+            return new String[]{};
+
+        } catch (CommunityFinderException ex) {
+            Logger.getLogger(TEvA.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IOException ex) {
+            Logger.getLogger(TEvA.class.getName()).log(Level.SEVERE, null, ex);
+        }
+
+        return new String[]{};
+
+    }
+    /*
+     public Assignments membership(CSVData myData, TopicModel model) {
         return null;
     }
 
