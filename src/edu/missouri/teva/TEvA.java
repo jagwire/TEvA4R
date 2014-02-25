@@ -154,8 +154,11 @@ public class TEvA {
     public TopicModelDTO evolve(String networksData, String csvKeyValuePairs) {
         try {
 
+            System.out.println("INSIDE EVOLVE()!");
             //generate NetworkProvider from csv string of edge lists.
             final Network[] networks = edu.missouri.teva.Network.networksFromCSV(networksData);
+            System.out.println("NETWORKS GENERATED FROM CSV!");
+
             NetworkProvider _provider = new NetworkProvider() {
 
                 @Override
