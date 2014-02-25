@@ -67,7 +67,9 @@ public class Network implements edu.mit.cci.sna.Network {
         List<Edge> edges = new ArrayList<Edge>();
         String[] csvRows = network.split("\n");
         for (int i = 0; i < csvRows.length; i++) {
+
             String[] columns = csvRows[i].split(",");
+
             Node node1 = Node.fromString(columns[0]);
             Node node2 = Node.fromString(columns[1]);
 
@@ -75,6 +77,9 @@ public class Network implements edu.mit.cci.sna.Network {
             nodes.add(node2);
             float weight = 0;
             if (columns.length == 3) {
+                if (columns[2].equals("weight")) {
+                    continue;
+                }
                 weight = Float.valueOf(columns[2]);
             }
 
