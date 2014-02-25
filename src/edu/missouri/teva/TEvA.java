@@ -1,7 +1,3 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 package edu.missouri.teva;
 
 import edu.mit.cci.adapters.csv.CsvBasedConversation;
@@ -10,9 +6,15 @@ import edu.mit.cci.sna.Network;
 import edu.mit.cci.teva.DefaultTevaFactory;
 import edu.mit.cci.teva.MemoryBasedRunner;
 import edu.mit.cci.teva.TevaFactory;
+import edu.mit.cci.teva.cpm.cfinder.CFinderCommunityFinder;
+import edu.mit.cci.teva.engine.BasicStepStrategy;
+import edu.mit.cci.teva.engine.Community;
 import edu.mit.cci.teva.engine.CommunityFinderException;
+import edu.mit.cci.teva.engine.CommunityFrame;
 import edu.mit.cci.teva.engine.CommunityModel;
+import edu.mit.cci.teva.engine.CommunityModel.Connection;
 import edu.mit.cci.teva.engine.EvolutionEngine;
+import edu.mit.cci.teva.engine.FastMergeStrategy;
 import edu.mit.cci.teva.engine.NetworkProvider;
 import edu.mit.cci.teva.engine.TevaParameters;
 import edu.mit.cci.teva.model.Conversation;
@@ -23,10 +25,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.xml.bind.JAXBException;
@@ -134,32 +138,93 @@ public class TEvA {
         return output.toArray(new String[]{});
     }
 
-    private EvolutionEngine EvolutionEngine(CommunityModel model, TevaParameters parameters, NetworkProvider provider, TevaFactory factory) {
-        return new EvolutionEngine(model, parameters, provider, factory.getFinder(), factory.getStepper(model), factory.getMerger());
+    private EvolutionEngine EvolutionEngine(CommunityModel model, TevaParameters parameters, NetworkProvider provider) {
+        return new EvolutionEngine(model,
+                parameters,
+                provider,
+                new CFinderCommunityFinder(parameters.getOverwriteNetworks(), parameters.getOverwriteAnalyses(), parameters),
+                new BasicStepStrategy(model, parameters),
+                new FastMergeStrategy(parameters.getFixedCliqueSize()));
     }
 
-    private CommunityModel CommunityModel(TevaParameters parameters, TevaFactory factory, Conversation conversation) {
-        return new CommunityModel(parameters, factory.getTopicWindowingFactory().getStrategy().getWindowBoundaries(), conversation.getName());
+    private CommunityModel CommunityModel(TevaParameters parameters, TevaFactory factory) {
+        return new CommunityModel(parameters, factory.getTopicWindowingFactory().getStrategy().getWindowBoundaries(), "");
     }
 
-    public String[] evolve(String networks, String csvKeyValuePairs) {
+    public String[] evolve(String networksData, String csvKeyValuePairs) {
         try {
-            if (conversation == null || factory == null) {
-                throw new RuntimeException("TRIED TO RUN EVOLVE WITHOUT RUNNING NETWORKS FIRST!");
-            }
 
+            //generate NetworkProvider from csv string of edge lists.
+            final Network[] networks = edu.missouri.teva.Network.networksFromCSV(networksData);
+            NetworkProvider _provider = new NetworkProvider() {
+
+                @Override
+                public int getNumberWindows() {
+                    return networks.length;
+                }
+
+                @Override
+                public Network getNetworkAt(int i) {
+                    return networks[i];
+                }
+            };
             TevaParametersAdapter adapter = new TevaParametersAdapter(csvKeyValuePairs);
             TevaParameters parameters = adapter.getParameters();
 
-            //create community model
-            CommunityModel model = CommunityModel(parameters, factory, conversation);
+            /**
+             * Create the community model.
+             *
+             * We pass null here because the evolution engine doesn't actually
+             * need the Date[][] array. We make note of this here because it
+             * will be more important in the membership function.
+             */
+            CommunityModel model = CommunityModel(parameters, null);
 
             //create evolution engine
-            EvolutionEngine engine = EvolutionEngine(model, parameters, provider, factory);
+            EvolutionEngine engine = EvolutionEngine(model, parameters, _provider);
 
             //run the algorithm            
             engine.process();
 
+            //windows list will get translated into CSV and assigned
+            //to topic field of TopicModel
+            List<List<List<String>>> windows = new ArrayList<>();
+            for (Community window : model.getCommunities()) {
+                List<List<String>> topics = new ArrayList<>();
+                for (CommunityFrame topic : window.history.values()) {
+                    List<String> edges = new ArrayList<>();
+                    for (Edge edge : topic.getEdges()) {
+                        String edgeAsCSV = toCSV(edge);
+                        edges.add(edgeAsCSV);
+                    }
+                    topics.add(edges);
+                }
+                windows.add(topics);
+            }
+
+            List<String> spawns = new ArrayList<>();
+            for (Set<Connection> connections : model.spawners.values()) {
+
+                for (Connection connection : connections) {
+                    spawns.add(toCSV(connection));
+                }
+            }
+
+            List<String> consumes = new ArrayList<>();
+            for (Set<Connection> connections : model.consumers.values()) {
+                for (Connection connection : connections) {
+                    consumes.add(toCSV(connection));
+                }
+            }
+
+            List<String> informs = new ArrayList<>();
+            for (Set<Connection> connections : model.informs.values()) {
+                for (Connection connection : connections) {
+                    informs.add(toCSV(connection));
+                }
+            }
+
+            //result should now be in CommunityModel
             return new String[]{};
 
         } catch (CommunityFinderException ex) {
@@ -171,15 +236,18 @@ public class TEvA {
         return new String[]{};
 
     }
-    /*
-     public Assignments membership(CSVData myData, TopicModel model) {
-        return null;
+    private String toCSV(Edge edge) {
+        edu.mit.cci.sna.Node[] ends = edge.getEndpoints();
+        float weight = edge.getWeight();
+        return StringUtils.join(new Object[]{ends[0], ends[1], weight}, ",");
     }
 
-    public static void topic_graph(TopicModel model, String graphmlFile) {
-    }
+    private String toCSV(Connection connection) {
+        String source = connection.source.id;
+        String target = connection.target.id;
+        float weight = connection.weight;
 
-    public static void message_graph(Object myData, TopicModel model, Assignments assignments, String graphmlFilename) {
+        return StringUtils.join(new Object[]{source, target, weight}, ",");
+
     }
-     */
 }
