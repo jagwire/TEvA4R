@@ -168,9 +168,10 @@ public class TEvA {
                     return networks[i];
                 }
             };
+            System.out.println("NETWORK PROVIDER CREATED!");
             TevaParametersAdapter adapter = new TevaParametersAdapter(csvKeyValuePairs);
             TevaParameters parameters = adapter.getParameters();
-
+            System.out.println("TEVA PARAMETERS CREATED!");
             /**
              * Create the community model.
              *
@@ -179,13 +180,13 @@ public class TEvA {
              * will be more important in the membership function.
              */
             CommunityModel model = CommunityModel(parameters, null);
-
+            System.out.println("COMMUNITY MODEL CREATED!");
             //create evolution engine
             EvolutionEngine engine = EvolutionEngine(model, parameters, _provider);
-
+            System.out.println("EVOLUTION ENGINE CREATED!");
             //run the algorithm            
             engine.process();
-
+            System.out.println("NETWORKS PROCESSED!");
             //windows list will get translated into CSV and assigned
             //to topic field of TopicModel
             List<List<List<String>>> windows = new ArrayList<>();
@@ -201,7 +202,7 @@ public class TEvA {
                 }
                 windows.add(topics);
             }
-
+            System.out.println("WINDOWS CREATED!");
             List<String> spawns = new ArrayList<>();
             for (Set<Connection> connections : model.spawners.values()) {
 
@@ -209,6 +210,7 @@ public class TEvA {
                     spawns.add(toCSV(connection));
                 }
             }
+            System.out.println("SPAWNS CREATED!");
 
             List<String> consumes = new ArrayList<>();
             for (Set<Connection> connections : model.consumers.values()) {
@@ -216,14 +218,14 @@ public class TEvA {
                     consumes.add(toCSV(connection));
                 }
             }
-
+            System.out.println("CONSUMES CREATED!");
             List<String> informs = new ArrayList<>();
             for (Set<Connection> connections : model.informs.values()) {
                 for (Connection connection : connections) {
                     informs.add(toCSV(connection));
                 }
             }
-
+            System.out.println("INFORMS CREATED! || RETURNING!");
             //result should now be in CommunityModel
             return new TopicModelDTO(spawns, consumes, informs, windows);
 

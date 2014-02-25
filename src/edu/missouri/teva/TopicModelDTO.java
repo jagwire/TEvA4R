@@ -33,7 +33,7 @@ public class TopicModelDTO {
 
         this.windows = new ArrayList<>();
         this.windows.addAll(windows);
-
+        System.out.println("DTO CREATED!");
     }
 
     public String[] getSpawns() {

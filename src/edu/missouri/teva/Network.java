@@ -67,7 +67,7 @@ public class Network implements edu.mit.cci.sna.Network {
         List<Edge> edges = new ArrayList<Edge>();
         String[] csvRows = network.split("\n");
         for (int i = 0; i < csvRows.length; i++) {
-
+            System.out.println("PRCESSING ROW: " + csvRows[i]);
             String[] columns = csvRows[i].split(",");
 
             Node node1 = Node.fromString(columns[0]);
