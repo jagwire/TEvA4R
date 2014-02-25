@@ -54,6 +54,7 @@ public class Network implements edu.mit.cci.sna.Network {
 
         String[] networks = csvData.split("=");
         for (String network : networks) {
+            System.out.println("PROCESSING NETWORK!");
             Network n = _fromCSV(network);
             _networks.add(n);
         }
@@ -65,7 +66,9 @@ public class Network implements edu.mit.cci.sna.Network {
     private static Network _fromCSV(String network) throws NumberFormatException {
         Set<Node> nodes = new HashSet<Node>();
         List<Edge> edges = new ArrayList<Edge>();
+        System.out.println("GENERATING NETWORK FROM CSV!");
         String[] csvRows = network.split("\n");
+        System.out.println("SPLIT CSV INTO " + csvRows.length + " ROWS!");
         for (int i = 0; i < csvRows.length; i++) {
             System.out.println("PRCESSING ROW: " + csvRows[i]);
             String[] columns = csvRows[i].split(",");
