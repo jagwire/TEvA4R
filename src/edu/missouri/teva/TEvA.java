@@ -151,7 +151,7 @@ public class TEvA {
         return new CommunityModel(parameters, factory.getTopicWindowingFactory().getStrategy().getWindowBoundaries(), "");
     }
 
-    public String[] evolve(String networksData, String csvKeyValuePairs) {
+    public TopicModelDTO evolve(String networksData, String csvKeyValuePairs) {
         try {
 
             //generate NetworkProvider from csv string of edge lists.
@@ -225,7 +225,7 @@ public class TEvA {
             }
 
             //result should now be in CommunityModel
-            return new String[]{};
+            return new TopicModelDTO(spawns, consumes, informs, windows);
 
         } catch (CommunityFinderException ex) {
             Logger.getLogger(TEvA.class.getName()).log(Level.SEVERE, null, ex);
@@ -233,7 +233,7 @@ public class TEvA {
             Logger.getLogger(TEvA.class.getName()).log(Level.SEVERE, null, ex);
         }
 
-        return new String[]{};
+        return null;
 
     }
     private String toCSV(Edge edge) {
