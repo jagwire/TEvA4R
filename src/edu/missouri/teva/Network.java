@@ -18,11 +18,17 @@
 
 package edu.missouri.teva;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -38,10 +44,17 @@ public class Network implements edu.mit.cci.sna.Network {
         edges = new ArrayList<>();
     }
 
-    public Network(Set<Node> nodes, List<Edge> edges) {
+    public Network(Set<edu.mit.cci.sna.Node> nodes, List<edu.mit.cci.sna.Edge> edges) {
         super();
-        nodes.addAll(nodes);
-        edges.addAll(edges);
+        this.nodes = new HashSet<>();
+        this.edges = new ArrayList<>();
+        if (nodes != null) {
+            this.nodes.addAll(nodes);
+        }
+
+        if (edges != null) {
+            this.edges.addAll(edges);
+        }
     }
 
     public boolean isDirected() {
@@ -54,40 +67,52 @@ public class Network implements edu.mit.cci.sna.Network {
 
         String[] networks = csvData.split("=");
         for (String network : networks) {
-            System.out.println("PROCESSING NETWORK!");
+            TEvA.log("PROCESSING NETWORK!");
             Network n = _fromCSV(network);
+            if (n == null) {
+                continue;
+            }
             _networks.add(n);
         }
-
 
         return _networks.toArray(new Network[]{});
     }
 
     private static Network _fromCSV(String network) throws NumberFormatException {
-        Set<Node> nodes = new HashSet<Node>();
-        List<Edge> edges = new ArrayList<Edge>();
-        System.out.println("GENERATING NETWORK FROM CSV!");
+        Set<edu.mit.cci.sna.Node> nodes = new HashSet<>();
+        List<edu.mit.cci.sna.Edge> edges = new ArrayList<>();
+        // System.out.println("GENERATING NETWORK FROM CSV!");
         String[] csvRows = network.split("\n");
-        System.out.println("SPLIT CSV INTO " + csvRows.length + " ROWS!");
-        for (int i = 0; i < csvRows.length; i++) {
-            System.out.println("PRCESSING ROW: " + csvRows[i]);
-            String[] columns = csvRows[i].split(",");
+        //System.out.println("SPLIT CSV INTO " + csvRows.length + " ROWS!");
 
-            Node node1 = Node.fromString(columns[0]);
-            Node node2 = Node.fromString(columns[1]);
+        try {
+            for (int i = 0; i < csvRows.length; i++) {
+                
+                String[] columns = csvRows[i].split(",");
 
-            nodes.add(node1);
-            nodes.add(node2);
-            float weight = 0;
-            if (columns.length == 3) {
-                if (columns[2].equals("weight")) {
-                    continue;
+                Node node1 = Node.fromString(columns[0]);
+                Node node2 = Node.fromString(columns[1]);
+
+                nodes.add(node1);
+                nodes.add(node2);
+                float weight = 0;
+                if (columns.length == 3) {
+                    if (columns[2].equals("weight")) {
+                        return null;
+                    }
+
+                    weight = Float.valueOf(columns[2]);
                 }
-                weight = Float.valueOf(columns[2]);
-            }
 
-            edges.add(new Edge(node1, node2, weight));
+                edges.add(new Edge(node1, node2, weight));
+            }
+        } catch (Exception e) {
+            TEvA.log("CREATING DUMB NETWORK!");
+            TEvA.log(e.getLocalizedMessage());
+            return new Network();
         }
+
+        TEvA.log("CREATING FULL NETWORK WITH " + edges.size() + " EDGES!");
         Network n = new Network(nodes, edges);
         return n;
     }

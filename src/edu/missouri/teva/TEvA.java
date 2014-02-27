@@ -7,6 +7,7 @@ import edu.mit.cci.teva.DefaultTevaFactory;
 import edu.mit.cci.teva.MemoryBasedRunner;
 import edu.mit.cci.teva.TevaFactory;
 import edu.mit.cci.teva.cpm.cfinder.CFinderCommunityFinder;
+import edu.mit.cci.teva.cpm.cos.CosCommunityFinder;
 import edu.mit.cci.teva.engine.BasicStepStrategy;
 import edu.mit.cci.teva.engine.Community;
 import edu.mit.cci.teva.engine.CommunityFinderException;
@@ -21,8 +22,12 @@ import edu.mit.cci.teva.model.Conversation;
 import edu.mit.cci.text.windowing.BinningStrategy;
 import edu.mit.cci.text.windowing.Windowable;
 import edu.mit.cci.text.wordij.CorpusToNetworkGenerator;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -66,6 +71,30 @@ public class TEvA {
 
     private NetworkProvider provider;
     private TevaFactory factory;
+
+    private static final String LOG_NAME = "C:\\Development\\TEVA-LOG.txt";
+    private static PrintWriter printWriter;
+    static {
+        try {
+            Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+
+                @Override
+                public void run() {
+                    printWriter.close();
+                }
+            }));
+            printWriter = new PrintWriter(new File(LOG_NAME));
+            printWriter.write("=== TEVA LOG ===");
+            printWriter.flush();
+            printWriter.println();
+        } catch (FileNotFoundException ex) {
+            Logger.getLogger(TEvA.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    public TEvA() {
+        
+    }
 
     public void defaults(String propertiesInCSV) {
         String[] entries = propertiesInCSV.split(",");
@@ -142,39 +171,36 @@ public class TEvA {
         return new EvolutionEngine(model,
                 parameters,
                 provider,
-                new CFinderCommunityFinder(parameters.getOverwriteNetworks(), parameters.getOverwriteAnalyses(), parameters),
+                //new CFinderCommunityFinder(parameters.getOverwriteNetworks(), parameters.getOverwriteAnalyses(), parameters),
+                new CosCommunityFinder(parameters),
                 new BasicStepStrategy(model, parameters),
                 new FastMergeStrategy(parameters.getFixedCliqueSize()));
     }
 
     private CommunityModel CommunityModel(TevaParameters parameters, TevaFactory factory) {
-        return new CommunityModel(parameters, factory.getTopicWindowingFactory().getStrategy().getWindowBoundaries(), "");
+        return new CommunityModel(parameters, null, "");
     }
 
     public TopicModelDTO evolve(String networksData, String csvKeyValuePairs) {
-        try {
 
-            System.out.println("INSIDE EVOLVE()!");
-            //generate NetworkProvider from csv string of edge lists.
+        log("INSIDE EVOLVE()");
+        try {            //generate NetworkProvider from csv string of edge lists.
             final Network[] networks = edu.missouri.teva.Network.networksFromCSV(networksData);
-            System.out.println("NETWORKS GENERATED FROM CSV!");
-
             NetworkProvider _provider = new NetworkProvider() {
-
                 @Override
                 public int getNumberWindows() {
                     return networks.length;
                 }
-
                 @Override
                 public Network getNetworkAt(int i) {
                     return networks[i];
                 }
             };
-            System.out.println("NETWORK PROVIDER CREATED!");
+
+            log("PROVIDER CREATED, number of windows: " + _provider.getNumberWindows());
             TevaParametersAdapter adapter = new TevaParametersAdapter(csvKeyValuePairs);
             TevaParameters parameters = adapter.getParameters();
-            System.out.println("TEVA PARAMETERS CREATED!");
+            
             /**
              * Create the community model.
              *
@@ -183,13 +209,13 @@ public class TEvA {
              * will be more important in the membership function.
              */
             CommunityModel model = CommunityModel(parameters, null);
-            System.out.println("COMMUNITY MODEL CREATED!");
+
             //create evolution engine
             EvolutionEngine engine = EvolutionEngine(model, parameters, _provider);
-            System.out.println("EVOLUTION ENGINE CREATED!");
+
             //run the algorithm            
             engine.process();
-            System.out.println("NETWORKS PROCESSED!");
+
             //windows list will get translated into CSV and assigned
             //to topic field of TopicModel
             List<List<List<String>>> windows = new ArrayList<>();
@@ -205,7 +231,7 @@ public class TEvA {
                 }
                 windows.add(topics);
             }
-            System.out.println("WINDOWS CREATED!");
+
             List<String> spawns = new ArrayList<>();
             for (Set<Connection> connections : model.spawners.values()) {
 
@@ -213,7 +239,7 @@ public class TEvA {
                     spawns.add(toCSV(connection));
                 }
             }
-            System.out.println("SPAWNS CREATED!");
+
 
             List<String> consumes = new ArrayList<>();
             for (Set<Connection> connections : model.consumers.values()) {
@@ -221,25 +247,28 @@ public class TEvA {
                     consumes.add(toCSV(connection));
                 }
             }
-            System.out.println("CONSUMES CREATED!");
+
             List<String> informs = new ArrayList<>();
             for (Set<Connection> connections : model.informs.values()) {
                 for (Connection connection : connections) {
                     informs.add(toCSV(connection));
                 }
             }
-            System.out.println("INFORMS CREATED! || RETURNING!");
+
             //result should now be in CommunityModel
             return new TopicModelDTO(spawns, consumes, informs, windows);
 
-        } catch (CommunityFinderException ex) {
-            Logger.getLogger(TEvA.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (IOException ex) {
-            Logger.getLogger(TEvA.class.getName()).log(Level.SEVERE, null, ex);
+        
+               } catch (Exception ex) {
+                   try {
+                       ex.printStackTrace(new PrintStream(new File("ERROR")));
+                   } catch (FileNotFoundException ex1) {
+                       Logger.getLogger(TEvA.class.getName()).log(Level.SEVERE, null, ex1);
+                   }
+                   Logger.getLogger(TEvA.class.getName()).log(Level.SEVERE, null, ex);
         }
 
-        return null;
-
+        return new TopicModelDTO();
     }
     private String toCSV(Edge edge) {
         edu.mit.cci.sna.Node[] ends = edge.getEndpoints();
@@ -253,6 +282,14 @@ public class TEvA {
         float weight = connection.weight;
 
         return StringUtils.join(new Object[]{source, target, weight}, ",");
+
+    }
+
+    public static void log(String message) {
+        
+        printWriter.append(message + "\n");
+        printWriter.flush();
+        printWriter.println();
 
     }
 }

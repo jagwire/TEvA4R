@@ -16,7 +16,7 @@ import java.util.Map;
  */
 public class Edge implements edu.mit.cci.sna.Edge {
 
-    private Node[] endpoints;
+    private Node[] endpoints = new Node[2];
     private boolean directed = false;
     private float weight = 0.0f;
 

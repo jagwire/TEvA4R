@@ -21,19 +21,21 @@ public class TopicModelDTO {
 
     private List<List<List<String>>> windows;
 
-    public TopicModelDTO(List<String> spawns, List<String> consumes, List<String> informs, List<List<List<String>>> windows) {
+    public TopicModelDTO() {
         this.spawns = new ArrayList<>();
-        this.spawns.addAll(spawns);
-
         this.consumes = new ArrayList<>();
-        this.consumes.addAll(consumes);
-
         this.informs = new ArrayList<>();
-        this.informs.addAll(informs);
-
         this.windows = new ArrayList<>();
+    }
+
+    public TopicModelDTO(List<String> spawns, List<String> consumes, List<String> informs, List<List<List<String>>> windows) {
+        super();
+
+        this.spawns.addAll(spawns);
+        this.consumes.addAll(consumes);
+        this.informs.addAll(informs);
         this.windows.addAll(windows);
-        System.out.println("DTO CREATED!");
+        // System.out.println("DTO CREATED!");
     }
 
     public String[] getSpawns() {
