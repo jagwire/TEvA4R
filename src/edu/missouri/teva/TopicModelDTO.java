@@ -22,19 +22,26 @@ public class TopicModelDTO {
     private List<List<List<String>>> windows;
 
     public TopicModelDTO() {
-        this.spawns = new ArrayList<>();
-        this.consumes = new ArrayList<>();
-        this.informs = new ArrayList<>();
-        this.windows = new ArrayList<>();
+        TEvA.log("NEW DEFAULT TOPIC MODEL!");
+        this.spawns = new ArrayList<String>();
+        this.consumes = new ArrayList<String>();
+        this.informs = new ArrayList<String>();
+        this.windows = new ArrayList<List<List<String>>>();
     }
 
     public TopicModelDTO(List<String> spawns, List<String> consumes, List<String> informs, List<List<List<String>>> windows) {
         super();
-
-        this.spawns.addAll(spawns);
-        this.consumes.addAll(consumes);
-        this.informs.addAll(informs);
-        this.windows.addAll(windows);
+        TEvA.log("NEW CUSTOM TOPIC MODEL!");
+//        this.spawns.addAll(spawns);
+//        this.consumes.addAll(consumes);
+//        this.informs.addAll(informs);
+//        this.windows.addAll(windows);
+        
+        this.spawns = spawns != null?spawns:new ArrayList<String>();
+        this.consumes = consumes != null?consumes:new ArrayList<String>();
+        this.informs = informs != null?informs:new ArrayList<String>();
+        this.windows = windows != null?windows:new ArrayList<List<List<String>>>();
+        
         // System.out.println("DTO CREATED!");
     }
 

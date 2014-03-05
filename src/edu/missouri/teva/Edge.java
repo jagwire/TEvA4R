@@ -32,7 +32,7 @@ public class Edge implements edu.mit.cci.sna.Edge {
     }
 
     public Edge(Node source, Node destination, float weight) {
-        properties = new HashMap<>();
+        properties = new HashMap<String, Object>();
         endpoints[0] = source;
         endpoints[1] = destination;
         this.weight = weight;
@@ -46,10 +46,8 @@ public class Edge implements edu.mit.cci.sna.Edge {
     @Override
     public boolean isDirected() {
         return directed;
-    }
+    };
 
-    ;
-    
     @Override
     public float getWeight() {
         return weight;

@@ -36,18 +36,52 @@ import java.util.logging.Logger;
  */
 public class Network implements edu.mit.cci.sna.Network {
 
+    public static Network[] networksFromArray(String[] networksData) {
+        
+        List<Network> _networks = new ArrayList<Network>();
+        for(String csvString: networksData) {
+            Network _network = new Network();
+            String[] csvRows = csvString.split("\n");
+            for(String csvRow: csvRows) {
+                //TEvA.log(csvRow);
+               String[] tokens = csvRow.split(",");
+               if(tokens == null) {
+                   TEvA.log("TOKENS ARE NULL!");
+               }
+               
+               if(tokens[0] == null) {
+                   TEvA.log("TOKENS 1 IS NULL!");
+               }
+               
+               if(tokens[1] == null) {
+                   TEvA.log("TOKENS 2 IS NULL!");
+               }
+               
+               Node src = Node.fromString(tokens[0]);
+               Node dst = Node.fromString(tokens[1]);
+               _network.add(src);
+               _network.add(dst);
+               
+               Edge e = new Edge(src, dst, Float.valueOf(tokens[2]).floatValue());
+               _network.add(e);
+            }
+            _networks.add(_network);
+        }
+        return _networks.toArray(new Network[] { });
+    }
+
     private Set<edu.mit.cci.sna.Node> nodes;
     private List<edu.mit.cci.sna.Edge> edges;
 
     public Network() {
-        nodes = new HashSet<>();
-        edges = new ArrayList<>();
+        this.nodes = new HashSet<edu.mit.cci.sna.Node>();
+        this.edges = new ArrayList<edu.mit.cci.sna.Edge>();
     }
 
     public Network(Set<edu.mit.cci.sna.Node> nodes, List<edu.mit.cci.sna.Edge> edges) {
         super();
-        this.nodes = new HashSet<>();
-        this.edges = new ArrayList<>();
+        this.nodes = new HashSet<edu.mit.cci.sna.Node>();
+        this.edges = new ArrayList<edu.mit.cci.sna.Edge>();
         if (nodes != null) {
             this.nodes.addAll(nodes);
         }
@@ -79,8 +113,8 @@ public class Network implements edu.mit.cci.sna.Network {
     }
 
     private static Network _fromCSV(String network) throws NumberFormatException {
-        Set<edu.mit.cci.sna.Node> nodes = new HashSet<>();
-        List<edu.mit.cci.sna.Edge> edges = new ArrayList<>();
+        Set<edu.mit.cci.sna.Node> nodes = new HashSet<edu.mit.cci.sna.Node>();
+        List<edu.mit.cci.sna.Edge> edges = new ArrayList<edu.mit.cci.sna.Edge>();
         // System.out.println("GENERATING NETWORK FROM CSV!");
         String[] csvRows = network.split("\n");
         //System.out.println("SPLIT CSV INTO " + csvRows.length + " ROWS!");

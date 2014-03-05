@@ -27,18 +27,21 @@ public class Node implements edu.mit.cci.sna.Node {
     }
 
     public static Node fromString(String data) {
+        if(data == null) {
+            TEvA.log("CREATING NODE WITH NULL DATA!");
+        }
         Node synthetic = new Node();
         synthetic.setLabel(data);
         synthetic.setId(data);
-        return null;
+        return synthetic;
     }
 
     public void setLabel(String data) {
-        this.label = label;
+        this.label = data;
     }
 
     public void setId(String data) {
-        this.id = id;
+        this.id = data;
     }
 
     public void setProperty(String key, Object value) {
