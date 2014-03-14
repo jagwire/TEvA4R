@@ -14,10 +14,12 @@ import edu.mit.cci.teva.engine.CommunityFinderException;
 import edu.mit.cci.teva.engine.CommunityFrame;
 import edu.mit.cci.teva.engine.CommunityModel;
 import edu.mit.cci.teva.engine.CommunityModel.Connection;
+import edu.mit.cci.teva.engine.ConversationChunk;
 import edu.mit.cci.teva.engine.EvolutionEngine;
 import edu.mit.cci.teva.engine.FastMergeStrategy;
 import edu.mit.cci.teva.engine.NetworkProvider;
 import edu.mit.cci.teva.engine.TevaParameters;
+import edu.mit.cci.teva.engine.TopicMembershipEngine;
 import edu.mit.cci.teva.model.Conversation;
 import edu.mit.cci.text.windowing.BinningStrategy;
 import edu.mit.cci.text.windowing.Windowable;
@@ -51,7 +53,7 @@ import org.apache.log4j.PropertyConfigurator;
  */
 public class TEvA {
 
-    private Conversation conversation;
+//    private Conversation conversation;
     private NetworkProvider provider;
     private TevaFactory factory;
 
@@ -105,12 +107,25 @@ public class TEvA {
         return null;
     }
 
+    private Conversation getConversationFromCSV(String csvData) {
+        Conversation conversation = null;
+        try {
+            InputStream stream = IOUtils.toInputStream(csvData);
+            conversation = new CsvBasedConversation("Corpus-Name", stream);
+        } catch(Exception e) { 
+            e.printStackTrace();
+        } finally {
+            return conversation;
+        }
+    }
+    
+    
     public String[] networks(String myData, String csvKeyValuePairs) throws IOException, ParseException, CommunityFinderException, JAXBException {
         //create input stream from string
         InputStream stream = IOUtils.toInputStream(myData);
 
         //create conversation 
-        conversation = new CsvBasedConversation("Corpus-Name", stream);
+        Conversation conversation = new CsvBasedConversation("Corpus-Name", stream);
 
         TevaParametersAdapter adapter = new TevaParametersAdapter(csvKeyValuePairs);
         TevaParameters parameters = adapter.getParameters();
@@ -264,7 +279,7 @@ public class TEvA {
             
             log("EVOLVE FINISHED!");
             //result should now be in CommunityModel
-            return new TopicModelDTO(spawns, consumes, informs, windows);
+            return new TopicModelDTO(spawns, consumes, informs, windows, model);
 
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -359,7 +374,7 @@ public class TEvA {
 
             log("EVOLVE FINISHED!");
             //result should now be in CommunityModel
-            return new TopicModelDTO(spawns, consumes, informs, windows);
+            return new TopicModelDTO(spawns, consumes, informs, windows, model);
 
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -369,7 +384,49 @@ public class TEvA {
 
         return new TopicModelDTO();
     }
-
+    
+    public String[] membership(String csvData, String csvKeyValuePairs, TopicModelDTO dto) {
+        try {
+            Conversation conversation = getConversationFromCSV(csvData);
+            
+            //new teva parameters
+            TevaParametersAdapter adapter = new TevaParametersAdapter(csvKeyValuePairs);
+            TevaParameters parameters = adapter.getParameters();
+            
+            //new factory based on RTEvAApproach
+            CommunityModel model = dto.getInternalModel();
+            TevaFactory approach = new RTEvAApproach(parameters, conversation);            
+            TopicMembershipEngine engine = approach.getMembershipEngine(model, conversation);
+            
+            //run membership
+            engine.process();
+            
+            List<String> rows = new ArrayList<String>();
+            log("PROCESSING: "+model.getCommunities().size()+" COMMUNITIES");
+            for(Community community: model.getCommunities()) {
+                String topicId = community.getId();
+                log("PROCESSING ASSIGNMENTS: "+community.getAssignments().size());
+                for(ConversationChunk chunk: community.getAssignments()) {
+                    log("PROCESSING MESSAGES: "+chunk.messages.size());
+                    for(Windowable post: chunk.messages) {
+                       
+                        String row = (topicId + ","+post.getId()+"\n");
+                        log("ADDING ROW: "+row);
+                        rows.add(row);
+                    }
+                }
+            }
+            
+            return rows.toArray(new String[] { });
+            
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            java.util.logging.Logger.getLogger(TEvA.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            log(ex.getLocalizedMessage());
+        }
+        return null;
+    }
+    
     private String toCSV(Edge edge) {
         edu.mit.cci.sna.Node[] ends = edge.getEndpoints();
         float weight = edge.getWeight();

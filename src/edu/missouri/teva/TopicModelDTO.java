@@ -6,6 +6,7 @@
 
 package edu.missouri.teva;
 
+import edu.mit.cci.teva.engine.CommunityModel;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -21,15 +22,19 @@ public class TopicModelDTO {
 
     private List<List<List<String>>> windows;
 
+    private CommunityModel internalModel;
+    
+    
     public TopicModelDTO() {
         TEvA.log("NEW DEFAULT TOPIC MODEL!");
         this.spawns = new ArrayList<String>();
         this.consumes = new ArrayList<String>();
         this.informs = new ArrayList<String>();
         this.windows = new ArrayList<List<List<String>>>();
+        this.internalModel = null;
     }
 
-    public TopicModelDTO(List<String> spawns, List<String> consumes, List<String> informs, List<List<List<String>>> windows) {
+    public TopicModelDTO(List<String> spawns, List<String> consumes, List<String> informs, List<List<List<String>>> windows, CommunityModel internalModel) {
         super();
         TEvA.log("NEW CUSTOM TOPIC MODEL!");
 //        this.spawns.addAll(spawns);
@@ -41,7 +46,7 @@ public class TopicModelDTO {
         this.consumes = consumes != null?consumes:new ArrayList<String>();
         this.informs = informs != null?informs:new ArrayList<String>();
         this.windows = windows != null?windows:new ArrayList<List<List<String>>>();
-        
+        this.internalModel = internalModel;
         // System.out.println("DTO CREATED!");
     }
 
@@ -59,6 +64,10 @@ public class TopicModelDTO {
 
     public List<List<List<String>>> getWindows() {
         return windows;
+    }
+    
+    public CommunityModel getInternalModel() {
+        return internalModel;
     }
 
 }
