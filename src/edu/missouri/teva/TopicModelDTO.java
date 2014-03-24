@@ -6,9 +6,15 @@
 
 package edu.missouri.teva;
 
+import edu.mit.cci.teva.TevaFactory;
+import edu.mit.cci.teva.engine.Community;
 import edu.mit.cci.teva.engine.CommunityModel;
+import edu.mit.cci.teva.engine.CommunityModel.Connection;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  *
@@ -67,7 +73,73 @@ public class TopicModelDTO {
     }
     
     public CommunityModel getInternalModel() {
+        
         return internalModel;
+    }
+    
+    public CommunityModelBuilder internalModel() {
+        return new CommunityModelBuilder(internalModel);
+    }
+
+    public static class CommunityModelBuilder {
+        private final CommunityModel internal;
+        private Date[][] windowBoundaries;
+
+        public CommunityModelBuilder(CommunityModel model) {
+            this.internal = model;
+        }
+        
+        public CommunityModelBuilder withWindowsFromFactory(TevaFactory factory) {
+            this.windowBoundaries = factory.getTopicWindowingFactory().getStrategy().getWindowBoundaries();
+            return this; 
+        }
+
+        
+        public CommunityModel build() {
+            
+            if(windowBoundaries == null) {
+                TEvA.log("GENERATING WINDOW BOUNDARIES BECAUSE NONE WERE GIVEN");
+                windowBoundaries = new Date[internal.getCommunities().size()][2];
+                for(int i = 0;i < internal.getCommunities().size(); i++) {
+ 
+                    windowBoundaries[i][0] = new Date(i*1000*60);
+                    windowBoundaries[i][1] = new Date(i*1000*60 + 1);
+                }
+            }
+            
+            CommunityModel output = new CommunityModel(internal.getParameters(), windowBoundaries, "");
+            for(Community community: internal.getCommunities()) {
+                output.addCommunity(community);
+            }
+            
+            for(Map.Entry<Integer, Set<Connection>> entry: internal.spawners.entrySet()) {
+                int bin = entry.getKey();
+                for(Connection connection: entry.getValue()) {
+                   output.addConnection(bin, connection.weight, CommunityModel.ConnectionType.SPAWNS, connection.source, connection.target);
+                }
+               
+            }
+            
+            for(Map.Entry<Integer, Set<Connection>> entry: internal.consumers.entrySet()) {
+                int bin = entry.getKey();
+                for(Connection connection: entry.getValue()) {
+                   output.addConnection(bin, connection.weight, CommunityModel.ConnectionType.CONSUMES, connection.source, connection.target);
+                }
+               
+            }
+            
+            for(Map.Entry<Integer, Set<Connection>> entry: internal.informs.entrySet()) {
+                int bin = entry.getKey();
+                for(Connection connection: entry.getValue()) {
+                   output.addConnection(bin, connection.weight, CommunityModel.ConnectionType.INFORMS, connection.source, connection.target);
+                }
+               
+            }
+            
+            
+            
+            return output;
+        }
     }
 
 }

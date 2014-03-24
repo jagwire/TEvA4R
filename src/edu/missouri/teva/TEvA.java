@@ -3,6 +3,8 @@ package edu.missouri.teva;
 import edu.mit.cci.adapters.csv.CsvBasedConversation;
 import edu.mit.cci.sna.Edge;
 import edu.mit.cci.sna.Network;
+import edu.mit.cci.sna.jung.DirectedJungNetwork;
+import edu.mit.cci.sna.jung.JungUtils;
 import edu.mit.cci.teva.DefaultTevaFactory;
 import edu.mit.cci.teva.MemoryBasedRunner;
 import edu.mit.cci.teva.TevaFactory;
@@ -21,17 +23,24 @@ import edu.mit.cci.teva.engine.NetworkProvider;
 import edu.mit.cci.teva.engine.TevaParameters;
 import edu.mit.cci.teva.engine.TopicMembershipEngine;
 import edu.mit.cci.teva.model.Conversation;
+import edu.mit.cci.teva.util.TevaUtils;
 import edu.mit.cci.text.windowing.BinningStrategy;
 import edu.mit.cci.text.windowing.Windowable;
 import edu.mit.cci.text.wordij.CorpusToNetworkGenerator;
+import edu.mit.cci.util.U;
+import edu.uci.ics.jung.graph.Hypergraph;
+import edu.uci.ics.jung.io.GraphMLWriter;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
@@ -119,7 +128,6 @@ public class TEvA {
         }
     }
     
-    
     public String[] networks(String myData, String csvKeyValuePairs) throws IOException, ParseException, CommunityFinderException, JAXBException {
         //create input stream from string
         InputStream stream = IOUtils.toInputStream(myData);
@@ -187,7 +195,11 @@ public class TEvA {
     }
 
     private CommunityModel CommunityModel(TevaParameters parameters, TevaFactory factory) {
-        return new CommunityModel(parameters, null, "");
+        if(factory == null) { 
+            return new CommunityModel(parameters, null, "");
+            
+        }
+        return new CommunityModel(parameters, factory.getTopicWindowingFactory().getStrategy().getWindowBoundaries(), "");
     }
 
     public TopicModelDTO evolve(String[] networksData, String csvKeyValuePairs) {
@@ -394,8 +406,10 @@ public class TEvA {
             TevaParameters parameters = adapter.getParameters();
             
             //new factory based on RTEvAApproach
-            CommunityModel model = dto.getInternalModel();
-            TevaFactory approach = new RTEvAApproach(parameters, conversation);            
+            
+                                  
+            TevaFactory approach = new RTEvAApproach(parameters, conversation);       
+            CommunityModel model =  dto.internalModel().withWindowsFromFactory(approach).build();
             TopicMembershipEngine engine = approach.getMembershipEngine(model, conversation);
             
             //run membership
@@ -425,6 +439,21 @@ public class TEvA {
             log(ex.getLocalizedMessage());
         }
         return null;
+    }
+ 
+    public void topic_graph(TopicModelDTO dto, String filename) {
+        
+        try {
+            CommunityModel synthetic =dto.internalModel().build();
+            DirectedJungNetwork network = TevaUtils.createCommunityGraph(synthetic, true, true, true);
+            TevaUtils.addDrainageScoresForCommunityGraph(network);
+            JungUtils.writeGraphML(network, U.mapify("Size", 0, "Messages",0,"Window", 0, "CommunityId", "", "Centrality", 0), filename + ".graphml");
+            
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            log(ex.getLocalizedMessage());
+        }
+        
     }
     
     private String toCSV(Edge edge) {
