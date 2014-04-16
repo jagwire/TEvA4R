@@ -38,6 +38,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -61,16 +63,16 @@ import org.apache.log4j.PropertyConfigurator;
  * @author Ryan
  */
 public class TEvA {
-
-//    private Conversation conversation;
     private NetworkProvider provider;
-    private TevaFactory factory;
 
-    private static final String LOG_NAME = "/Users/Ryan/Development/TEVA-LOG.txt";
+    private static String LOG_NAME;// = "/Users/Ryan/Development/TEVA-LOG.txt";
     private static PrintWriter printWriter;
 
     static {
         try {
+            
+            LOG_NAME = System.getProperty("user.home")+"/TEVA-LOG.txt";
+            
             Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
 
                 @Override
@@ -93,7 +95,7 @@ public class TEvA {
             logger.setLevel(Level.OFF);
 
         }
-        PropertyConfigurator.configure("/Users/Ryan/Development/RTEvA/log4j.properties");
+//        PropertyConfigurator.configure("/Users/Ryan/Development/RTEvA/log4j.properties");
         try {
             System.setOut(new PrintStream("MOCK_OUT.txt"));
         } catch (FileNotFoundException ex) {
@@ -127,8 +129,11 @@ public class TEvA {
             return conversation;
         }
     }
-    
     public String[] networks(String myData, String csvKeyValuePairs) throws IOException, ParseException, CommunityFinderException, JAXBException {
+        return networks(myData, csvKeyValuePairs, true);
+    }
+    
+    public String[] networks(String myData, String csvKeyValuePairs, boolean useOldFactory) throws IOException, ParseException, CommunityFinderException, JAXBException {
         //create input stream from string
         InputStream stream = IOUtils.toInputStream(myData);
 
@@ -137,12 +142,17 @@ public class TEvA {
 
         TevaParametersAdapter adapter = new TevaParametersAdapter(csvKeyValuePairs);
         TevaParameters parameters = adapter.getParameters();
-
-        factory = new DefaultTevaFactory(parameters, conversation);
+        
+        TevaFactory approach = null;
+        if(useOldFactory) {
+            approach = new DefaultTevaFactory(parameters, conversation);
+        } else {
+            approach = new RTEvAApproach(parameters, conversation);
+        }
 
         //start network generation piece
-        BinningStrategy<Windowable> binningStrategy = factory.getTopicBinningStrategy(factory.getConversationData(), factory.getTopicWindowingFactory());
-        CorpusToNetworkGenerator<Windowable> networkGenerator = new CorpusToNetworkGenerator<Windowable>(binningStrategy, factory.getNetworkCalculator());
+        BinningStrategy<Windowable> binningStrategy = approach.getTopicBinningStrategy(approach.getConversationData(), approach.getTopicWindowingFactory());
+        CorpusToNetworkGenerator<Windowable> networkGenerator = new CorpusToNetworkGenerator<Windowable>(binningStrategy, approach.getNetworkCalculator());
         final List<Network> result = networkGenerator.analyzeToMemory();
 
         //while we're at it, let's create a network provider for safe keeping
@@ -406,8 +416,6 @@ public class TEvA {
             TevaParameters parameters = adapter.getParameters();
             
             //new factory based on RTEvAApproach
-            
-                                  
             TevaFactory approach = new RTEvAApproach(parameters, conversation);       
             CommunityModel model =  dto.internalModel().withWindowsFromFactory(approach).build();
             TopicMembershipEngine engine = approach.getMembershipEngine(model, conversation);
